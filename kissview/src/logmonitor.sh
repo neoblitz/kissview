@@ -54,11 +54,11 @@ $LOCATION $CATCMD $LOGFILE | cut -d' ' -f1,4,7,9,11 | while read ip dt file code
 	DETAILS=`curl -s "http://www.geoiptool.com/?IP=$ip" | html2text -ascii -nobs |\
 	 egrep 'IP Address:|Latitude:|Longitude:|Country code:|City:'|\
 	 tr '_' ' '|\
-	 awk '/IP Address:/{if($4 == "|") {print "127.0.0.1,"} else {print $4 ","}}\
-	 	  /Country code:/{if($4 == "()") {print "US(USA),"} else {print $4 ","}}\
-	 	  /City:/{if($3 == "|") {print "LosAngeles,"} else {print $3 ","}}\
-	 	  /Longitude:/{if($3 == "|") {print "-118.006,"} else {print $3 ","}}\
-	      /Latitude:/{if($3 == "|"){print "33.8856,"} else {print $3 ","}} '`
+	 awk '/IP Address:/{if($4 == "|") {print "0.0.0.0,"} else {print $4 ","}}\
+	 	  /Country code:/{if($4 == "()") {print "NONE(NONE),"} else {print $4 ","}}\
+	 	  /City:/{if($3 == "|") {print "NONE,"} else {print $3 ","}}\
+	 	  /Longitude:/{if($3 == "|") {print ","} else {print $3 ","}}\
+	      /Latitude:/{if($3 == "|"){print ","} else {print $3 ","}} '`
 	echo -n $DETAILS | sed 's/ //g' >> $OUTPUTLOG
 	echo -n $file","$code","$ref",">> $OUTPUTLOG
 	echo $dt | tr '[' ' ' >> $OUTPUTLOG
