@@ -342,21 +342,24 @@ def main():
         else:
         	fileclienthash[url] = [ip]
         
-        lockey = city + "," + country.split('(')[0]
-        latlang = lat + "," + long + "," + lockey
+        # We proceed only if the IP was successfully geolocated
+        if lat and long:
+            lockey = city + "," + country.split('(')[0]
+            latlang = lat + "," + long + "," + lockey
         
-        #Store location corresponding to a IP
-        iplocationhash[ip] = lockey
+            #Store location corresponding to a IP
+            iplocationhash[ip] = lockey
         
-        # Record unique IPs from a region
-        if iphash[ip] == 1:
-        	if lockey in uniquevisitshash:
-        		uniquevisitshash[lockey] = uniquevisitshash[lockey]+1
-        	else:
-        		uniquevisitshash[lockey] = 1
+            # Record unique IPs from a region
+            if iphash[ip] == 1:
+        	       if lockey in uniquevisitshash:
+        		          uniquevisitshash[lockey] = uniquevisitshash[lockey]+1
+        	       else:
+        		          uniquevisitshash[lockey] = 1
         		
-        totalvisitshash[lockey] = iphash[ip]
-        latlonghash[latlang] = iphash[ip]
+            totalvisitshash[lockey] = iphash[ip]
+            latlonghash[latlang] = iphash[ip]
+            
     file.close()
 
     # The last record will be the one from which end date is computed            
