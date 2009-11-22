@@ -228,7 +228,7 @@ page_template = """
   <body>
 	<h1> Visitors to arunviswanathan.com %(sdate)s - %(edate)s </h1>
 	<h2> kissview: A Simple Webserver Log Vizualization tool using <a href="http://code.google.com/apis/visualization/">Google Visualization APIs</a> </h2>
-	<h3> <a href="">kissview</a> (the Keep it Simple Stupid, Viewer) takes in a Apache logfile(ASCII or Gzipped) and produces a static HTML file containing 
+	<h3> <a href="http://code.google.com/p/kissview/">kissview</a> (the Keep it Simple, Stupid Viewer) takes in a Apache logfile(ASCII or Gzipped) and produces a static HTML file containing 
 visualizations written using Google Visualization APIs.</h3>
     <h3> <a href="mailto:arunv@arunviswanathan.com">Arun Viswanathan</a></h3>
 	<table border=0 cellpadding=20>
