@@ -50,15 +50,15 @@ $LOCATION $CATCMD $LOGFILE | cut -d' ' -f1,4,7,9,11 | while read ip dt file code
 	
 	# Do a geoiplookup to get geolocation of the IP. We are interested in Country, City, Lat, Long
 	# Part of this commandline was inspired by commandlinefu.com 
-	#DETAILS=`curl -s "http://www.geoiptool.com/?IP=$ip" | html2text -ascii -nobs | egrep 'IP Address:|Latitude:|Longitude:|Country code:|City:'|cut -d: -f2 | tr -s '|' ' ' | tr -s '_' ' '| sed 's/\n/ /' | sed 's/ //g'`
 	DETAILS=`curl -s "http://www.geoiptool.com/?IP=$ip" | html2text -ascii -nobs |\
 	 egrep 'IP Address:|Latitude:|Longitude:|Country code:|City:'|\
-	 tr '_' ' '|\
-	 awk '/IP Address:/{if($4 == "|") {print "0.0.0.0,"} else {print $4 ","}}\
-	 	  /Country code:/{if($4 == "()") {print "NONE(NONE),"} else {print $4 ","}}\
-	 	  /City:/{if($3 == "|") {print "NONE,"} else {print $3 ","}}\
-	 	  /Longitude:/{if($3 == "|") {print ","} else {print $3 ","}}\
-	      /Latitude:/{if($3 == "|"){print ","} else {print $3 ","}} '`
+	 tr '_' ' '|sed 's/|//g'|sed 's/ //g' |\
+	 awk 'BEGIN{FS=":"} \
+		  /IPAddress/{if($2 == "") {print "0.0.0.0,"} else {print $2 ","}}\
+	 	  /Countrycode/{if($2 == "()") {print "NONE(NONE),"} else { print $2 ","}}\
+	 	  /City/{if($2 == "") {print "NONE,"} else {print $2 ","}}\
+	 	  /Longitude/{if($2 == "") {print ","} else {print $2 ","}}\
+	      /Latitude/{if($2 == ""){print ","} else {print $2 ","}} '`
 	echo -n $DETAILS | sed 's/ //g' >> $OUTPUTLOG
 	echo -n $file","$code","$ref",">> $OUTPUTLOG
 	echo $dt | tr '[' ' ' >> $OUTPUTLOG
