@@ -29,7 +29,8 @@ page_template = """
   <script>
 	var chart;   // Chart   	
 	var gmap;    // GeoMap
-    var table;   // Table
+    var table;   // File Table
+    var ngip_table; //NonGeoIP table
      
 	// Data Tables
     var map_dt;  // Data for geomap  
@@ -37,6 +38,7 @@ page_template = """
     var fileclient_dt; // Contains remote IPs corresponding to file 
 	var iplocation_dt; // Contains geolocation of a IP
 	var chart_dt; // Data for the chart
+	var nongeoip_dt; // Data for the nongeoip table
 
     // Load necessary visualization libraries
     google.load('visualization', '1', {packages:['geomap']});
@@ -56,6 +58,7 @@ page_template = """
          fileclient_dt = new google.visualization.DataTable(%(fileclient_json)s, 0.6);
          iplocation_dt = new google.visualization.DataTable(%(iplocation_json)s, 0.6);
          chart_dt = new google.visualization.DataTable(%(chart_json)s, 0.6);
+         nongeoip_dt = new google.visualization.DataTable(%(nongeoip_json)s, 0.6);
          
          // Build options for gmap
          var options = {};
@@ -80,12 +83,15 @@ page_template = """
          // Draw the File Table
          drawFileTable();
          
+         // Draw nongeoip table
+         drawNonGeoIPTable();
+         
          // This would be a good place to add more extensions...
          
     }
 
     /* 
-     * Draws the file access able
+     * Draws the file access table
      */ 
 	function drawFileTable() {
 
@@ -96,10 +102,19 @@ page_template = """
     }
 
     /* 
+     * Draws the Non GeoIP table
+     */ 
+    function drawNonGeoIPTable() {
+
+          ngip_table = new google.visualization.Table(document.getElementById('ngip_div'));
+          ngip_table.draw(nongeoip_dt, {showRowNumber: true});
+    }
+
+    /* 
      * Event handler for handling clicks on the table
      */ 
 	function selectHandler() {
-	      var selection = json_table.getSelection();
+	      var selection = table.getSelection();
 	      var message = '';
 	  
 	      for (var i = 0; i < selection.length; i++) {
@@ -120,7 +135,7 @@ page_template = """
 		        ipstr = ipstr.replace(/\]/g,'');
 		        
 		        //Get individual IPs and sort them
-		        var iparr = str.split(/,/);
+		        var iparr = ipstr.split(/,/);
 		        iparr = iparr.sort();
 		        
 		        // Find the counts of all IPs
@@ -163,8 +178,7 @@ page_template = """
 		dataView.setColumns([0, 1, 2]);
 
 		chart = new google.visualization.BarChart(document.getElementById('chart'));
-	    chart.draw(dataView, {width: 800, height: 400, legend: 'bottom', isStacked:true});
-
+	    chart.draw(dataView, {is3D: true, width: 800, height: 400, legend: 'bottom', isStacked:true});
 		// Add over/out handlers for mouse.
 		google.visualization.events.addListener(chart, 'onmouseover', barMouseOver);
 		google.visualization.events.addListener(chart, 'onmouseout', barMouseOut);
@@ -226,8 +240,8 @@ page_template = """
   </style>
 </head>
   <body>
-	<h1> Visitors to arunviswanathan.com %(sdate)s - %(edate)s </h1>
-	<h2> kissview: A Simple Webserver Log Vizualization tool using <a href="http://code.google.com/apis/visualization/">Google Visualization APIs</a> </h2>
+	<h1> Webserver Access Log %(sdate)s - %(edate)s </h1>
+	<h2> Created using <a href="http://code.google.com/p/kissview/">kissview</a>: Keep It Simple, Stupid Viewer</h2>
 	<h3> <a href="http://code.google.com/p/kissview/">kissview</a> (the Keep it Simple, Stupid Viewer) takes in a Apache logfile(ASCII or Gzipped) and produces a static HTML file containing 
 visualizations written using Google Visualization APIs.</h3>
     <h3> <a href="mailto:arunv@arunviswanathan.com">Arun Viswanathan</a></h3>
@@ -244,6 +258,9 @@ visualizations written using Google Visualization APIs.</h3>
 		<td valign="top">
 			<p class="head"> Unique and Total Visitor Counts </p>
 			<div id="chart"></div>
+			<p></p>
+			<p class="head"> IPs without any GeoLocation Information </p>
+            <div id="ngip_div"></div>
 		</td>
 		<td valign="top">
 			<p class=head> Click on table rows to find Remote IPs responsible for the file access </p> 
@@ -296,6 +313,7 @@ def main():
     filefreqhash = {}	
     fileclienthash = {}	
     iplocationhash = {}
+    nongeoiphash = {}
 
     # Start Date and End Date
     sdate = None
@@ -359,6 +377,12 @@ def main():
         		
             totalvisitshash[lockey] = iphash[ip]
             latlonghash[latlang] = iphash[ip]
+        else:
+            # Put the IP in a separate hash
+            if ip in nongeoiphash:
+                nongeoiphash[ip] = nongeoiphash[ip] + 1
+            else:
+                nongeoiphash[ip] = 1 
             
     file.close()
 
@@ -379,6 +403,9 @@ def main():
 
     iplocation_description = {"ip": ("string", "IP"),
 						 "location": ("string", "Location")}
+    
+    nongeoip_description = {"ip": ("string", "IP"),
+                            "freq": ("number", "Frequency")}
 	
     map_description = {"lat": ("number", "LATITUDE"),
 					   "long": ("number", "LONGITUDE"),
@@ -416,7 +443,12 @@ def main():
 			loc = latlong.split(',',2)[2]
 			h = {'lat':la, 'long':lg, 'value':ip, 'hover':loc}
 			map_data.append(h)
-
+    
+    nongeoip_data = []
+    for ip, freq in sorted(nongeoiphash.iteritems()):
+            h = {'ip':ip, 'freq': freq}
+            nongeoip_data.append(h)
+    
     # Load data into gviz_api.DataTable 
     map_data_table = gviz_api.DataTable(map_description)
     map_data_table.LoadData(map_data)
@@ -433,6 +465,9 @@ def main():
     iplocation_data_table = gviz_api.DataTable(iplocation_description)
     iplocation_data_table.LoadData(iplocation_data)
 	
+    nongeoip_data_table = gviz_api.DataTable(nongeoip_description)
+    nongeoip_data_table.LoadData(nongeoip_data)
+    
 	# Create JSON strings 
     # Note that these variables are embedded in the javascript above
     chart_json = table_data_table.ToJSon(columns_order=("location", "uvisitors", "tvisitors"))
@@ -440,6 +475,7 @@ def main():
     filefreq_json = file_data_table.ToJSon(columns_order=("filepath", "frequency"))
     fileclient_json = filehash_data_table.ToJSon(columns_order=("filepath", "ips"))
     iplocation_json = iplocation_data_table.ToJSon(columns_order=("ip", "location"))
+    nongeoip_json = nongeoip_data_table.ToJSon(columns_order=("ip", "freq"))
 
 	# Put the JSon string into the template
     # Magic of Python !!!
