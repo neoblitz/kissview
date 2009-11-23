@@ -2,7 +2,7 @@
 #labels Phase-Design
 
 = Geomap of all the accesses to a webserver =
-<img src="http://lh6.ggpht.com/_m-sH_r6-WdY/Swn0AxiZpVI/AAAAAAAAGMg/YoSif4k12H4/s1024/geomap_v0.1.png" width=640 height=480 />
+http://lh6.ggpht.com/_m-sH_r6-WdY/Swn0AxiZpVI/AAAAAAAAGMg/YoSif4k12H4/s1024/geomap_v0.1.png" width=640 height=480
 
 = File Access Table and Bar Chart =
-<img src="http://lh5.ggpht.com/_m-sH_r6-WdY/Swn0Ao99j9I/AAAAAAAAGMc/Gbc9aAKc2pA/s912/fileaccess_visitorchart_v0.1.png" width=640 height=480 />
+http://lh5.ggpht.com/_m-sH_r6-WdY/Swn0Ao99j9I/AAAAAAAAGMc/Gbc9aAKc2pA/s912/fileaccess_visitorchart_v0.1.png"
