@@ -1,0 +1,25 @@
++=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=+
+| kissview v0.1								  |
+| Arun Viswanathan (arunv@arunviswanathan.com)|
++=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=+
+
+Kissview is hosted at: http://code.google.com/p/kissview/.
+Refer that for details and updates.
+
+What is kissview?
+=-=-=-=-=-=-=-=-=
+kissview is an ultrasimple yet powerful webserver log analysis tool. The rationale behind this 
+tool is to output very simple statistics gleaned from an HTTP logfile. This tool is nowhere as 
+feature-rich as compared to the power of awstats and the like and that is exactly the point behind 
+this tool. Thus it is named kissview (Keep it Simple Stupid, Viewer).
+
+Kissview takes in a Apache logfile(ASCII or Gzipped) and produces a static HTML file containing 
+visualizations written using Google Visualization APIs. Thats it! Nothing more, Nothing less!
+
+Usage
+=-=-=
+1. First run logmonitor.sh as follows:
+	./logmonitor.sh <path_to_accesslog> <path_to_outputlog> [ssh <username>@<remotehost>]
+
+2. python kissview.py --log=<path_to_outputlog> --output=<path_to_outputhtml>
+
