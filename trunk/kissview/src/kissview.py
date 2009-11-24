@@ -59,7 +59,8 @@ page_template = """
          iplocation_dt = new google.visualization.DataTable(%(iplocation_json)s, 0.6);
          chart_dt = new google.visualization.DataTable(%(chart_json)s, 0.6);
          nongeoip_dt = new google.visualization.DataTable(%(nongeoip_json)s, 0.6);
-         
+         map_dt = new google.visualization.DataTable(%(map_json)s, 0.6);
+                  
          // Build options for gmap
          var options = {};
          options['colors'] = [0xFF8747, 0xFFB581, 0xc06000];
@@ -70,9 +71,7 @@ page_template = """
          options['height']      = 800;
          options['showZoomOut'] = false;
 
-         // Create the data table
-         map_dt = new google.visualization.DataTable(%(map_json)s, 0.6);
-         
+                  
          // Create a GeoMap object
          gmap   = new google.visualization.GeoMap(document.getElementById('map_canvas'));
          gmap.draw(map_dt, options);
@@ -328,12 +327,12 @@ def main():
         # Split the line 
         # Expected format:
         #ip countrycode(countrycode) city long lat url status referrer date 
-        ip      = fields[0]
-        country = fields[1]
-        city    = fields[2]	
-        long    = fields[3]	
-        lat     = fields[4]	
-        url     = fields[5]	
+        ip       = fields[0]
+        country  = fields[1]
+        city     = fields[2]	
+        long     = fields[3]	
+        lat      = fields[4]	
+        url      = fields[5]	
         status   = fields[6]	
         referrer = fields[7]	
         dt = fields[8]	
@@ -361,11 +360,18 @@ def main():
         	fileclienthash[url] = [ip]
         
         # We proceed only if the IP was successfully geolocated
+        # If lat and long are seen that means atleast country is resolved.
+        # City may not be resolved.
         if lat and long:
-            lockey = city + "," + country.split('(')[0]
+            if city is None:
+                lockey = country.split('(')[0]
+            else:
+                lockey = city + "," + country.split('(')[0]
+            
             latlang = lat + "," + long + "," + lockey
         
             #Store location corresponding to a IP
+            #An IP always has a single location (well it should)
             iplocationhash[ip] = lockey
         
             # Record unique IPs from a region
@@ -374,11 +380,20 @@ def main():
         		          uniquevisitshash[lockey] = uniquevisitshash[lockey]+1
         	       else:
         		          uniquevisitshash[lockey] = 1
-        		
-            totalvisitshash[lockey] = iphash[ip]
-            latlonghash[latlang] = iphash[ip]
+        	
+            # Total visits from a particular location	
+            # A location can have many IPs associated with it thus the addition
+            if lockey in totalvisitshash:
+                totalvisitshash[lockey] = totalvisitshash[lockey] + 1
+            else:
+                totalvisitshash[lockey] = 1
+            
+            if latlang in latlonghash:                    
+                latlonghash[latlang] = latlonghash[latlang] + 1
+            else:
+                latlonghash[latlang] = 1
         else:
-            # Put the IP in a separate hash
+            # Put the nongeolocated IPs in a separate hash
             if ip in nongeoiphash:
                 nongeoiphash[ip] = nongeoiphash[ip] + 1
             else:
@@ -414,8 +429,8 @@ def main():
 	
     # Populate with actual data
     table_data = []
-    for city, tvisits in totalvisitshash.iteritems():
-			h = {'location':city, 'uvisitors':uniquevisitshash[city],'tvisitors': tvisits}
+    for lockey, tvisits in totalvisitshash.iteritems():
+			h = {'location':lockey, 'uvisitors':uniquevisitshash[lockey],'tvisitors': tvisits}
 			table_data.append(h)
 	
     file_data = []
@@ -471,7 +486,7 @@ def main():
 	# Create JSON strings 
     # Note that these variables are embedded in the javascript above
     chart_json = table_data_table.ToJSon(columns_order=("location", "uvisitors", "tvisitors"))
-    map_json = map_data_table.ToJSon(columns_order=("lat", "long","value","hover"), order_by="lat")
+    map_json = map_data_table.ToJSon(columns_order=("lat", "long","value","hover"))
     filefreq_json = file_data_table.ToJSon(columns_order=("filepath", "frequency"))
     fileclient_json = filehash_data_table.ToJSon(columns_order=("filepath", "ips"))
     iplocation_json = iplocation_data_table.ToJSon(columns_order=("ip", "location"))
