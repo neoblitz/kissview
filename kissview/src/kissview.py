@@ -363,8 +363,8 @@ def main():
         # If lat and long are seen that means atleast country is resolved.
         # City may not be resolved.
         if lat and long:
-            if city is None:
-                lockey = country.split('(')[0]
+            if city == "NONE":
+                lockey = "UnknownCity"+","+country.split('(')[0]
             else:
                 lockey = city + "," + country.split('(')[0]
             
