@@ -16,6 +16,7 @@ this tool. Thus it is named kissview (Keep it Simple Stupid, Viewer).
 Kissview takes in a Apache logfile(ASCII or Gzipped) and produces a static HTML file containing 
 visualizations written using Google Visualization APIs. Thats it! Nothing more, Nothing less!
 
+
 Usage
 =-=-=
 1. First run logmonitor.sh as follows:
