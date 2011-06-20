@@ -21,6 +21,7 @@ This software is licensed under the GPLv3 license, included in
 import gviz_api
 import sys
 import getopt
+from dictionary import OrderedDict
 
 page_template = """
 <html>
@@ -44,6 +45,7 @@ page_template = """
     google.load('visualization', '1', {packages:['geomap']});
 	google.load('visualization', '1', {packages:['table']});
 	google.load('visualization', '1', {packages:['barchart']});
+	google.load('visualization', '1', {packages:['corechart', 'annotatedtimeline']});
 
     // Entry Point
     google.setOnLoadCallback(buildView);  
@@ -60,6 +62,8 @@ page_template = """
          chart_dt = new google.visualization.DataTable(%(chart_json)s, 0.6);
          nongeoip_dt = new google.visualization.DataTable(%(nongeoip_json)s, 0.6);
          map_dt = new google.visualization.DataTable(%(map_json)s, 0.6);
+         timeline_dt = new google.visualization.DataTable(%(timeline_json)s, 0.6);
+         timeline2_dt = new google.visualization.DataTable(%(timeline_json)s, 0.6);
                   
          // Build options for gmap
          var options = {};
@@ -86,7 +90,21 @@ page_template = """
          drawNonGeoIPTable();
          
          // This would be a good place to add more extensions...
-         
+         drawTimeLine();
+    }
+
+    /*
+     * Draws the timeline showing accesses from IPs over time
+     */
+
+    function drawTimeLine() {
+        var annotatedtimeline = new google.visualization.AnnotatedTimeLine(
+          document.getElementById('timeline_div_json'));
+          annotatedtimeline.draw(timeline_dt, {'displayAnnotations': true, legendPosition: 'newRow', 'allowHtml': true, 'annotationsWidth': 30, 'displayAnnotationsFilter': true});
+          
+          //#t = new google.visualization.Table(document.getElementById('timeline_table'));
+          //t.draw(timeline2_dt, {showRowNumber: true});
+        
     }
 
     /* 
@@ -270,9 +288,36 @@ visualizations written using Google Visualization APIs.</h3>
 		</td>
 	</tr>
 	</table>
+	<table border=0 cellpadding=20>
+	   <tr>
+        <td valign="top">
+            <p class="head"> IP Timeline </p>
+            <div id="timeline_div_json", style="width:1200; height:500" ></div>
+        </td>
+    </tr>
+	</table>
   </body>
 </html>
 """
+
+
+class IpStats:
+    def __init__(self, ip, freq=None):
+        self.ip = ip
+        self.freq = freq or 1
+    
+    def incr(self):
+        self.freq += 1
+        
+    def get_ip(self):
+        return self.ip
+    
+    def get_freq(self):
+        return self.freq
+    
+    def __repr__(self):
+        return "(%s,%s)" %( self.ip, self.freq)
+    
 
 def main():
 	# Parse command line options
@@ -313,10 +358,14 @@ def main():
     fileclienthash = {}	
     iplocationhash = {}
     nongeoiphash = {}
+    timelinehash = {}
+    ipfilehash = {}
 
     # Start Date and End Date
     sdate = None
     edate = None
+    
+    from datetime import datetime
     
     # Read the file line by line and process the input
     for line in file:
@@ -347,17 +396,46 @@ def main():
         else:
         	iphash[ip] = 1
         
+        dt = dt.strip()
+        dateobject = None
+        try:
+            l = dt.split(':')            
+            dateobject = datetime.strptime(":".join(l[:3]), "%d/%b/%Y:%H:%M")
+        except ValueError as ex:
+            raise Exception("%s", ex)
+        
+        if dateobject in timelinehash:
+            l = timelinehash[dateobject]
+            ipfound = False
+            for ipobj in l:
+                if ip == ipobj.get_ip():
+                   ipobj.incr()
+                   ipfound = True
+                   break
+               
+            if not ipfound:  
+                l.append(IpStats(ip,1))
+        else:
+            timelinehash[dateobject] = [IpStats(ip,1)]
+        
+        
         # Increment the number of accesses per url
         if url in filefreqhash:
         	filefreqhash[url] = filefreqhash[url] + 1
         else:
         	filefreqhash[url] = 1
-        
+
         if url in fileclienthash:
         	l = fileclienthash[url]
         	l.append(ip)
         else:
         	fileclienthash[url] = [ip]
+            
+        if ip in ipfilehash:
+            l = ipfilehash[ip]
+            l.append((dateobject,url))
+        else:
+            ipfilehash[ip] = [(dateobject,url)]
         
         # We proceed only if the IP was successfully geolocated
         # If lat and long are seen that means atleast country is resolved.
@@ -400,6 +478,34 @@ def main():
                 nongeoiphash[ip] = 1 
             
     file.close()
+    
+    
+    toprune = []
+    td = []
+    td.append(""" "accesstime": ("datetime", "Time")""")
+    for ip,f in iphash.items():
+        if f < 5:
+            toprune.append(ip)
+        else:
+            desc = """  "ipfreq_%s": ("number", "%s"), 
+                        "ann_ipfreq_%s": ("string", "Annotation"), 
+                        "ann_ip_%s":("string", "IP") """ % (ip,ip,ip,ip)         
+            td.append(desc)
+
+    
+    s = "{ %s }" % (",".join(td))
+    timeline_description = eval(s)
+            
+    for dt,iplist in timelinehash.items():
+        newiplist = []
+        for ipobj in iplist:
+            if ipobj.get_ip() not in toprune:
+                newiplist.append(ipobj)
+
+        if(newiplist):
+            timelinehash[dt] = newiplist
+        else:
+            del timelinehash[dt]
 
     # The last record will be the one from which end date is computed            
     if not edate:
@@ -463,7 +569,45 @@ def main():
     for ip, freq in sorted(nongeoiphash.iteritems()):
             h = {'ip':ip, 'freq': freq}
             nongeoip_data.append(h)
+
     
+    
+    timeline_data = []
+
+    for atime, ipstatlist in sorted(timelinehash.iteritems()):
+        # Ex. format of time "19/Jun/2011:12:20:39"
+        # http://docs.python.org/library/datetime.html#datetime.datetime.strptime
+
+        h = OrderedDict()
+        h['accesstime'] = atime;
+        for ip in sorted(iphash.keys()):
+            if ip not in toprune:            
+                h['ipfreq_%s'%(ip)] = None;
+                h['ann_ipfreq_%s'%(ip)] = None;
+                h['ann_ip_%s'%(ip)] = None;
+
+        for ips in ipstatlist:
+            ip = ips.get_ip()
+            f = ips.get_freq()
+            h['ipfreq_%s'%(ip)] = f;
+            h['ann_ipfreq_%s'%(ip)] = "IP: %s Hits: %s"%(ip, f)
+            
+            flist = ipfilehash[ip]
+            fs = []
+            for at, file in flist:
+                 if (at == atime):
+                     fs.append(file)
+            
+            h['ann_ip_%s'%(ip)] = " %s" %("<BR>".join(fs))
+                
+        
+        timeline_data.append(h)
+    
+    colstr = []
+    for k in h.keys():
+        colstr.append("""'%s'"""%k)
+    timelinecols = ",".join(colstr)
+
     # Load data into gviz_api.DataTable 
     map_data_table = gviz_api.DataTable(map_description)
     map_data_table.LoadData(map_data)
@@ -483,6 +627,10 @@ def main():
     nongeoip_data_table = gviz_api.DataTable(nongeoip_description)
     nongeoip_data_table.LoadData(nongeoip_data)
     
+    timeline_data_table = gviz_api.DataTable(timeline_description)
+    timeline_data_table.LoadData(timeline_data)
+    
+    
 	# Create JSON strings 
     # Note that these variables are embedded in the javascript above
     chart_json = table_data_table.ToJSon(columns_order=("location", "uvisitors", "tvisitors"))
@@ -491,13 +639,18 @@ def main():
     fileclient_json = filehash_data_table.ToJSon(columns_order=("filepath", "ips"))
     iplocation_json = iplocation_data_table.ToJSon(columns_order=("ip", "location"))
     nongeoip_json = nongeoip_data_table.ToJSon(columns_order=("ip", "freq"))
-
+    
+    e = "(%s)"%timelinecols
+    colorder = eval(e)
+    timeline_json = timeline_data_table.ToJSon(columns_order=colorder)
+ 
 	# Put the JSon string into the template
     # Magic of Python !!!
     outfile.write("\n");
     outfile.write(page_template % vars())
     outfile.close()
 
+ 
 
 
 if __name__ == '__main__':
