@@ -570,8 +570,6 @@ def main():
             h = {'ip':ip, 'freq': freq}
             nongeoip_data.append(h)
 
-    
-    
     timeline_data = []
 
     for atime, ipstatlist in sorted(timelinehash.iteritems()):
@@ -590,8 +588,11 @@ def main():
             ip = ips.get_ip()
             f = ips.get_freq()
             h['ipfreq_%s'%(ip)] = f;
-            h['ann_ipfreq_%s'%(ip)] = "IP: %s Hits: %s"%(ip, f)
-            
+            iploc = None
+            if ip in iplocationhash:
+                iploc = iplocationhash[ip]
+            h['ann_ipfreq_%s'%(ip)] = "IP: %s (%s) Hits: %s"%\
+                            (ip,iploc , f)
             flist = ipfilehash[ip]
             fs = []
             for at, file in flist:
@@ -599,7 +600,6 @@ def main():
                      fs.append(file)
             
             h['ann_ip_%s'%(ip)] = " %s" %("<BR>".join(fs))
-                
         
         timeline_data.append(h)
     
