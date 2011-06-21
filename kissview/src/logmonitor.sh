@@ -62,6 +62,6 @@ $LOCATION $CATCMD $LOGFILE | cut -d' ' -f1,4,7,9,11 | while read ip dt file code
 	echo -n $DETAILS | sed 's/ //g' >> $OUTPUTLOG
 	echo -n $file","$code","$ref",">> $OUTPUTLOG
 	echo $dt | tr '[' ' ' >> $OUTPUTLOG
-	echo $DETAILS $file","$code","$ref","$dt 
+	#echo $DETAILS $file","$code","$ref","$dt
 done
 

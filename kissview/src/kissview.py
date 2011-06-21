@@ -322,20 +322,23 @@ class IpStats:
 def main():
 	# Parse command line options
     try:
-        opts, args = getopt.getopt(sys.argv[1:], '', ['log=', 'output='])
+        opts, args = getopt.getopt(sys.argv[1:], '', ['log=', 'output=', 'ignore='])
     except getopt.error, msg:
-        print 'python kissview.py --log [access log] --output [output html file]'
+        print 'python kissview.py --log [access log] --output [output html file] --ignore [comma separated list]'
         sys.exit(2)
     
     log        = ''
     htmlout    = ''
-
+    fileignorelist = []
     # Process options
     for option, arg in opts:
         if option == '--log':
           log = arg
         elif option == '--output':
           htmlout = arg
+        elif option == '--ignore':
+          fileignorelist = arg.split(",")
+          print "Ignore filters specified: ", fileignorelist
 	try:
 		file = open(log,"r")
 	except:
@@ -361,17 +364,29 @@ def main():
     timelinehash = {}
     ipfilehash = {}
 
+
+
     # Start Date and End Date
     sdate = None
     edate = None
-    
+    badlinesl9 = 0
+    badlinesg9 = 0
+    ignoredlines = 0
+    totalrecords = 0
     from datetime import datetime
-    
+    import time
+    dt = None
     # Read the file line by line and process the input
-    for line in file:
+    for line in file: 
+        ignoreline = False
         fields = line.split(',')
         if(len(fields) < 9):
-        	continue
+            badlinesl9 += 1
+            continue
+        if(len(fields) > 9):
+           # We probably split the URL badly
+           badlinesg9 += 1
+           continue 
         
         # Split the line 
         # Expected format:
@@ -385,7 +400,18 @@ def main():
         status   = fields[6]	
         referrer = fields[7]	
         dt = fields[8]	
-        
+
+        for f in fileignorelist:
+            if url.find(f) ==0:
+              ignoreline = True
+              break
+
+        if ignoreline:
+            ignoredlines += 1
+            continue 
+		
+        #print fields		        
+
         # Assume that the first line is the startdata
         if not sdate:
         	sdate = dt
@@ -400,9 +426,10 @@ def main():
         dateobject = None
         try:
             l = dt.split(':')            
-            dateobject = datetime.strptime(":".join(l[:3]), "%d/%b/%Y:%H:%M")
-        except ValueError as ex:
-            raise Exception("%s", ex)
+            timeobject = time.strptime(":".join(l[:3]), "%d/%b/%Y:%H:%M")
+            dateobject = datetime.fromtimestamp(time.mktime(timeobject))
+        except ValueError:
+            raise Exception("Exception while converting %s (%s %s)" %(dt, timeobject, dateobject))
         
         if dateobject in timelinehash:
             l = timelinehash[dateobject]
@@ -476,9 +503,17 @@ def main():
                 nongeoiphash[ip] = nongeoiphash[ip] + 1
             else:
                 nongeoiphash[ip] = 1 
+        totalrecords += 1
             
     file.close()
+    print "%20s:%d" % ("Total records processed",totalrecords)
+    print "%20s:%d" % ("Bad lines (with > 9 fields)",badlinesg9) 
+    print "%20s:%d" % ("Bad lines (with < 9 fields)",badlinesl9)  
+    print "%20s:%d" % ("Lines ignored due to filters",ignoredlines)
     
+    # The last record will be the one from which end date is computed            
+    if not edate:
+		edate = dt
     
     toprune = []
     td = []
@@ -507,9 +542,6 @@ def main():
         else:
             del timelinehash[dt]
 
-    # The last record will be the one from which end date is computed            
-    if not edate:
-		edate = dt
 
     # Create schemas for all the data tables to be passed to the Javascript
     table_description = {"location": ("string", "Location"),
@@ -571,7 +603,8 @@ def main():
             nongeoip_data.append(h)
 
     timeline_data = []
-
+    h = OrderedDict()
+    
     for atime, ipstatlist in sorted(timelinehash.iteritems()):
         # Ex. format of time "19/Jun/2011:12:20:39"
         # http://docs.python.org/library/datetime.html#datetime.datetime.strptime
